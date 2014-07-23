@@ -1,0 +1,10 @@
+cli
+===
+
+Package cli provides structure for command line applications with sub-commands.
+
+This package was heavily influenced by the Go command line application.
+Commands help and version are implemented by default. The usage information
+is pretty printed in an opinionated format.
+
+Copyright (c) 2014 by Philip Nelson. See LICENSE for details.
