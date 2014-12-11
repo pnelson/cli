@@ -98,7 +98,7 @@ func (a *Application) Run() {
 	if similar != nil {
 		fmt.Fprintf(os.Stderr, "\nDid you mean?\n")
 		for _, cmd := range similar {
-			fmt.Fprintf(os.Stderr, "\t%s\n", cmd.Name())
+			fmt.Fprintf(os.Stderr, "    %s\n", cmd.Name())
 		}
 	}
 
