@@ -26,6 +26,12 @@ type Command struct {
 
 	// Flags is a set of flags specific to this command.
 	Flags flag.FlagSet
+
+	// native is whether or not the command is native to this package.
+	native bool
+
+	// distance is the leveshtein distance from the entered command.
+	distance int
 }
 
 // Name returns the command's name: the first word in the usage line.
@@ -44,3 +50,10 @@ func (c *Command) usage() {
 	fmt.Fprintf(os.Stderr, "%s\n", strings.TrimSpace(c.Long))
 	os.Exit(2)
 }
+
+// byDistance implements sort.Interface on the distance attribute.
+type byDistance []*Command
+
+func (s byDistance) Len() int           { return len(s) }
+func (s byDistance) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s byDistance) Less(i, j int) bool { return s[i].distance < s[j].distance }

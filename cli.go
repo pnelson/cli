@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strings"
 )
 
 // An Application represents a command line application.
@@ -21,6 +23,8 @@ type Application struct {
 	commands []*Command
 }
 
+const similarThreshold = 5
+
 // New creates a basic Application with help and version commands.
 func New(name, version string) *Application {
 	app := &Application{
@@ -29,13 +33,15 @@ func New(name, version string) *Application {
 	}
 
 	app.Command(&Command{
-		Usage: "help",
-		Short: "Output this usage information.",
+		native: true,
+		Usage:  "help",
+		Short:  "Output this usage information.",
 	})
 
 	app.Command(&Command{
-		Usage: "version",
-		Short: "Output the application version.",
+		native: true,
+		Usage:  "version",
+		Short:  "Output the application version.",
 		Run: func(cmd *Command, args []string) int {
 			fmt.Printf("%s v%s\n", app.name, app.version)
 			return 0
@@ -66,7 +72,13 @@ func (a *Application) Run() {
 	}
 
 	for _, cmd := range a.commands {
-		if cmd.Name() != args[0] || cmd.Run == nil {
+		name := cmd.Name()
+		if name != args[0] || cmd.Run == nil {
+			if strings.HasPrefix(name, args[0]) {
+				cmd.distance = 0
+			} else {
+				cmd.distance = levenshtein(args[0], name)
+			}
 			continue
 		}
 
@@ -77,8 +89,19 @@ func (a *Application) Run() {
 		os.Exit(code)
 	}
 
+	sort.Sort(byDistance(a.commands))
+
 	fmt.Fprintf(os.Stderr, "%s: unknown command %#q\n", a.name, args[0])
 	fmt.Fprintf(os.Stderr, "Run `%s help` for usage.\n", a.name)
+
+	similar := a.similar()
+	if similar != nil {
+		fmt.Fprintf(os.Stderr, "\nDid you mean?\n")
+		for _, cmd := range similar {
+			fmt.Fprintf(os.Stderr, "\t%s\n", cmd.Name())
+		}
+	}
+
 	os.Exit(2)
 }
 
@@ -115,6 +138,16 @@ func (a *Application) help(args []string) {
 	fmt.Fprintf(os.Stderr, "Unknown help topic %#q.\n", name)
 	fmt.Fprintf(os.Stderr, "Run `%s help`.\n", a.name)
 	os.Exit(2)
+}
+
+func (a *Application) similar() []*Command {
+	var rv []*Command
+	for _, cmd := range a.commands {
+		if !cmd.native && cmd.distance < similarThreshold {
+			rv = append(rv, cmd)
+		}
+	}
+	return rv
 }
 
 func (a *Application) printUsage(w io.Writer) {
