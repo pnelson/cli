@@ -42,7 +42,7 @@ func New(name, version string) *Application {
 		native: true,
 		Usage:  "version",
 		Short:  "Output the application version.",
-		Run: func(cmd *Command, args []string) int {
+		Run: func(args []string) int {
 			fmt.Printf("%s v%s\n", app.name, app.version)
 			return 0
 		},
@@ -85,7 +85,7 @@ func (a *Application) Run() {
 		cmd.Flags.Usage = cmd.usage
 		cmd.Flags.Parse(args[1:])
 		args = cmd.Flags.Args()
-		code := cmd.Run(cmd, args)
+		code := cmd.Run(args)
 		os.Exit(code)
 	}
 

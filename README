@@ -27,7 +27,7 @@ Add some commands:
   app.Command(&cli.Command{
     Usage: "say <message>",
     Short: "Print a message to stdout.",
-    Run: func(cmd *cli.Command, args[] string) int {
+    Run: func(args[] string) int {
       if len(args) < 1 {
         return 1
       }

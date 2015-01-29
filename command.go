@@ -12,7 +12,7 @@ type Command struct {
 	// Run runs the command.
 	// The args are the arguments after the command name.
 	// The return value is the exit code passed to os.Exit.
-	Run func(cmd *Command, args []string) int
+	Run func(args []string) int
 
 	// Usage is the one-line usage message.
 	// The first word in the line is taken to be the command name.
