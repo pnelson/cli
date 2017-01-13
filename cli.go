@@ -122,16 +122,8 @@ func (a *Application) help(args []string) {
 		if cmd.Name() != name {
 			continue
 		}
-
-		data := struct {
-			Name    string
-			Command *Command
-		}{
-			Name:    a.name,
-			Command: cmd,
-		}
-
-		tmpl(os.Stdout, helpTemplate, &data)
+		data := &helpData{a.name, cmd}
+		tmpl(os.Stdout, helpTemplate, data)
 		return
 	}
 
@@ -151,15 +143,8 @@ func (a *Application) similar() []*Command {
 }
 
 func (a *Application) printUsage(w io.Writer) {
-	data := struct {
-		Name     string
-		Commands []*Command
-	}{
-		Name:     a.name,
-		Commands: a.commands,
-	}
-
-	tmpl(w, usageTemplate, &data)
+	data := usageData{a.name, a.commands}
+	tmpl(w, usageTemplate, data)
 }
 
 func (a *Application) usage() {
