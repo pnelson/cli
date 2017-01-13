@@ -19,35 +19,22 @@ import (
 // An Application represents a command line application.
 type Application struct {
 	name     string
-	version  string
 	commands []*Command
 }
 
 const similarThreshold = 5
 
-// New creates a basic Application with help and version commands.
-func New(name, version string) *Application {
-	app := &Application{
-		name:    name,
-		version: version,
-	}
-
+// New creates a new Application.
+func New(name string, opts ...Option) *Application {
+	app := &Application{name: name}
 	app.Command(&Command{
 		native: true,
 		Usage:  "help",
 		Short:  "Output this usage information.",
 	})
-
-	app.Command(&Command{
-		native: true,
-		Usage:  "version",
-		Short:  "Output the application version.",
-		Run: func(args []string) int {
-			fmt.Printf("%s v%s\n", app.name, app.version)
-			return 0
-		},
-	})
-
+	for _, option := range opts {
+		option(app)
+	}
 	return app
 }
 
