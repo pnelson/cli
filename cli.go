@@ -22,8 +22,6 @@ type Application struct {
 	commands []*Command
 }
 
-const similarThreshold = 5
-
 // New creates a new Application.
 func New(name string, opts ...Option) *Application {
 	app := &Application{name: name}

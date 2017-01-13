@@ -1,5 +1,9 @@
 package cli
 
+// similarThreshold is the maximum levenshtein distance at
+// which a command is considered to be similar.
+const similarThreshold = 5
+
 // levenshtein returns the levenshtein distance of s from t.
 func levenshtein(s, t string) int {
 	if s == t {
