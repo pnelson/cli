@@ -9,7 +9,7 @@ is pretty printed in an opinionated format.
 The most basic cli application is boring:
 
 ```go
-app := cli.New("app", "0.0.1")
+app := cli.New("app", cli.Version("0.0.1"))
 app.Run()
 ```  
 
