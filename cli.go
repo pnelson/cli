@@ -1,138 +1,381 @@
-/*
-Package cli provides structure for command line applications with sub-commands.
-
-This package was heavily influenced by the Go command line application.
-Commands help and version are implemented by default. The usage information
-is pretty printed in an opinionated format.
-*/
+// Package cli provides structure for command line applications.
 package cli
 
 import (
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"sort"
 	"strings"
+	"unicode"
 )
 
-// An Application represents a command line application.
-type Application struct {
-	name     string
-	commands []*Command
+var (
+	sep    = "_"
+	mapper = strings.NewReplacer(".", sep, "/", sep, "-", sep, ",", sep)
+)
+
+// CLI represents a command line application.
+type CLI struct {
+	name           string
+	usage          string
+	strict         bool
+	flags          []*Flag
+	flagsMap       map[string]*Flag
+	commands       []*Command
+	commandsMap    map[string]*Command
+	resolve        Resolver
+	version        string
+	stdout         io.Writer
+	stderr         io.Writer
+	helpHandler    Handler
+	defaultHandler Handler
+	usageFormatter UsageFormatter
 }
 
-// New creates a new Application.
-func New(name string, opts ...Option) *Application {
-	app := &Application{name: name}
-	app.Command(&Command{
-		native: true,
-		Usage:  "help",
-		Short:  "Output this usage information.",
-	})
+// New returns a new CLI application.
+func New(name, usage string, flags []*Flag, opts ...Option) *CLI {
+	c := &CLI{
+		name:           name,
+		usage:          strings.TrimSpace(usage),
+		flags:          flags,
+		flagsMap:       make(map[string]*Flag),
+		commands:       make([]*Command, 0),
+		commandsMap:    make(map[string]*Command),
+		resolve:        defaultResolver,
+		stdout:         os.Stdout,
+		stderr:         os.Stderr,
+		usageFormatter: defaultUsageFormatter,
+	}
 	for _, option := range opts {
-		option(app)
+		option(c)
 	}
-	return app
+	if c.helpHandler == nil {
+		c.helpHandler = c.defaultHelpHandler
+	}
+	if c.defaultHandler == nil {
+		c.defaultHandler = c.defaultDefaultHandler
+	}
+	c.Add("help", c.helpHandler, "show command usage information", nil)
+	if c.version != "" {
+		c.Add("version", c.versionHandler, "show version information", nil)
+	}
+	return c
 }
 
-// Command registers a command with the application.
-func (a *Application) Command(cmd *Command) {
-	a.commands = append(a.commands, cmd)
+// Add adds a new command.
+func (c *CLI) Add(name string, handler Handler, usage string, flags []*Flag, opts ...CommandOption) *Command {
+	name = strings.ToLower(name)
+	if handler == nil {
+		panic(fmt.Errorf("cli: command '%s' has nil handler", name))
+	}
+	_, ok := c.commandsMap[name]
+	if ok {
+		panic(fmt.Errorf("cli: duplicate command '%s'", name))
+	}
+	cmd := NewCommand(name, handler, usage, flags, opts...)
+	c.commands = append(c.commands, cmd)
+	c.commandsMap[name] = cmd
+	if cmd.alias != "" {
+		dup, ok := c.commandsMap[cmd.alias]
+		if ok {
+			panic(fmt.Errorf("cli: duplicate command alias '%s' for '%s'", cmd.alias, dup.name))
+		}
+		c.commandsMap[cmd.alias] = cmd
+	}
+	return cmd
 }
 
-// Run will parse flags and dispatch to the command.
-func (a *Application) Run() {
-	flag.Usage = a.usage
-	flag.Parse()
+// Run parses the command line arguments, starting with the
+// program name, and dispatches to the appropriate handler.
+func (c *CLI) Run(args []string) {
+	c.sortCommandsByName()
+	if args == nil {
+		args = os.Args
+	}
+	err := c.run(args)
+	c.resolve(err)
+}
 
-	args := flag.Args()
+// sortCommandsByName sorts the command list in ascending alphabetical order.
+func (c *CLI) sortCommandsByName() {
+	fn := func(i, j int) bool {
+		return c.commands[i].name < c.commands[j].name
+	}
+	sort.Slice(c.commands, fn)
+}
+
+// run parses the root command and dispatches to the given subcommand.
+func (c *CLI) run(args []string) error {
+	args, err := c.parse(args, c.flags)
+	if err != nil {
+		return err
+	}
 	if len(args) < 1 {
-		a.usage()
+		return c.defaultHandler(args)
 	}
-
-	if args[0] == "help" {
-		a.help(args[1:])
-		return
-	}
-
-	for _, cmd := range a.commands {
-		name := cmd.Name()
-		if name != args[0] || cmd.Run == nil {
-			if strings.HasPrefix(name, args[0]) {
-				cmd.distance = 0
-			} else {
-				cmd.distance = levenshtein(args[0], name)
-			}
-			continue
-		}
-
-		cmd.Flags.Usage = cmd.usage
-		cmd.Flags.Parse(args[1:])
-		args = cmd.Flags.Args()
-		code := cmd.Run(args)
-		os.Exit(code)
-	}
-
-	sort.Sort(byDistance(a.commands))
-
-	fmt.Fprintf(os.Stderr, "%s: unknown command %#q\n", a.name, args[0])
-	fmt.Fprintf(os.Stderr, "Run `%s help` for usage.\n", a.name)
-
-	similar := a.similar()
-	if similar != nil {
-		fmt.Fprintf(os.Stderr, "\nDid you mean?\n")
-		for _, cmd := range similar {
-			fmt.Fprintf(os.Stderr, "    %s\n", cmd.Name())
-		}
-	}
-
-	os.Exit(2)
-}
-
-func (a *Application) help(args []string) {
-	if len(args) == 0 {
-		a.printUsage(os.Stdout)
-		return
-	}
-
-	if len(args) != 1 {
-		fmt.Fprintf(os.Stderr, "usage: %s help [command]\n", a.name)
-		fmt.Fprintf(os.Stderr, "Too many arguments given.\n")
-		os.Exit(2)
-	}
-
 	name := args[0]
-	for _, cmd := range a.commands {
-		if cmd.Name() != name {
+	cmd, ok := c.commandsMap[name]
+	if !ok {
+		return c.commandNotFound(name)
+	}
+	args, err = c.parse(args, cmd.flags)
+	if err != nil {
+		return err
+	}
+	return cmd.handler(args)
+}
+
+// parse processes args as flags until there are no longer flags.
+func (c *CLI) parse(args []string, flags []*Flag) ([]string, error) {
+	if len(args) < 1 {
+		return nil, errors.New("cli: must have args")
+	}
+	err := c.initFlags(flags)
+	if err != nil {
+		return nil, err
+	}
+	return Parse(args[1:], flags, c.strict)
+}
+
+// initFlags populates the application flag map and
+// initial values from environment variables.
+func (c *CLI) initFlags(flags []*Flag) error {
+	for _, f := range flags {
+		_, ok := c.flagsMap[f.name]
+		if ok {
+			return fmt.Errorf("cli: duplicate flag '%s'", f.name)
+		}
+		c.flagsMap[f.name] = f
+		if f.alias != "" {
+			dup, ok := c.flagsMap[f.alias]
+			if ok {
+				return fmt.Errorf("cli: duplicate short flag '%s' for '%s'", f.alias, dup.name)
+			}
+			c.flagsMap[f.alias] = f
+		}
+		if f.envKey == "" {
+			key := strings.ToUpper(c.name + "_" + f.name)
+			f.envKey = mapper.Replace(key)
+		}
+	}
+	return nil
+}
+
+// commandNotFound prints helpful usage information and suggestions.
+func (c *CLI) commandNotFound(name string) error {
+	fmt.Fprintf(c.stderr, "Unknown command '%s'.\n", name)
+	fmt.Fprintf(c.stderr, "Run '%s help' for usage information.\n", c.name)
+	similar := make([]*Command, 0)
+	for _, cmd := range c.commands {
+		distance := 0
+		if !strings.HasPrefix(cmd.name, name) {
+			distance = levenshtein(name, cmd.name)
+		}
+		if distance < similarThreshold {
+			similar = append(similar, cmd)
+		}
+	}
+	if len(similar) > 0 {
+		fmt.Fprintf(c.stderr, "\nDid you mean?\n\n")
+		for _, cmd := range similar {
+			fmt.Fprintf(c.stderr, "    %s\n", cmd.name)
+		}
+		fmt.Fprintf(c.stderr, "\n")
+	}
+	return errors.New("cli: unknown command")
+}
+
+// defaultHelpHandler is the default handler for the help command.
+func (c *CLI) defaultHelpHandler(args []string) error {
+	if len(args) == 0 {
+		return c.Usage(c.stdout)
+	}
+	if len(args) != 1 {
+		fmt.Fprintf(c.stderr, "Too many arguments given.\n")
+		fmt.Fprintf(c.stderr, "Run '%s help' for usage information.\n", c.name)
+		fmt.Fprintf(c.stderr, "Run '%s help [command]' for more information about a command.\n", c.name)
+		return errors.New("cli: too many arguments")
+	}
+	name := args[0]
+	cmd, ok := c.commandsMap[name]
+	if !ok {
+		fmt.Fprintf(c.stderr, "Unknown help topic '%s'.\n", name)
+		fmt.Fprintf(c.stderr, "Run '%s help' for usage information.\n", c.name)
+		return errors.New("cli: unknown help topic")
+	}
+	u := newCommandUsage(cmd)
+	return tmpl(c.stdout, tmplCommandUsage, u)
+}
+
+// defaultDefaultHandler is the default handler for naked commands.
+func (c *CLI) defaultDefaultHandler(args []string) error {
+	err := c.Usage(c.stderr)
+	if err != nil {
+		return err
+	}
+	return errors.New("cli: no command")
+}
+
+// versionHandler is the handler for the version command.
+func (c *CLI) versionHandler(args []string) error {
+	fmt.Fprintf(c.stdout, "%s\n", c.version)
+	return nil
+}
+
+// Usage displays the application usage information.
+func (c *CLI) Usage(w io.Writer) error {
+	u := Usage{
+		Name:     c.name,
+		Usage:    c.usage,
+		Flags:    make([]FlagUsage, len(c.flags)),
+		Commands: make([]CommandUsage, len(c.commands)),
+	}
+	for i, f := range c.flags {
+		u.Flags[i] = newFlagUsage(f)
+	}
+	for i, cmd := range c.commands {
+		u.Commands[i] = newCommandUsage(cmd)
+	}
+	return c.usageFormatter(w, u)
+}
+
+// Option represents a functional option for configuration.
+type Option func(*CLI)
+
+// Help sets the application help handler.
+func Help(handler Handler) Option {
+	return func(c *CLI) {
+		c.helpHandler = handler
+	}
+}
+
+// Version enables the application version handler.
+func Version(version string) Option {
+	return func(c *CLI) {
+		c.version = version
+	}
+}
+
+// Default sets the handler to execute when no command is given.
+func Default(handler Handler) Option {
+	return func(c *CLI) {
+		c.defaultHandler = handler
+	}
+}
+
+// ErrorResolver sets the error resolver.
+func ErrorResolver(resolver Resolver) Option {
+	return func(c *CLI) {
+		c.resolve = resolver
+	}
+}
+
+// Stdout sets the stdout writer.
+func Stdout(w io.Writer) Option {
+	return func(c *CLI) {
+		c.stdout = w
+	}
+}
+
+// Stderr sets the stderr writer.
+func Stderr(w io.Writer) Option {
+	return func(c *CLI) {
+		c.stderr = w
+	}
+}
+
+// Strict sets the flag parsing behavior for parsing undefined flags.
+// The resolver is triggered if strict mode is enabled. Defaults to true.
+func Strict(strict bool) Option {
+	return func(c *CLI) {
+		c.strict = strict
+	}
+}
+
+// Parse parses flag definitions from the argument list. Flag parsing stops
+// at the first non-flag argument, including single or double hyphens followed
+// by whitespace or end of input.
+func Parse(args []string, flags []*Flag, strict bool) ([]string, error) {
+	m := make(map[string]*Flag)
+	for _, f := range flags {
+		m[f.name] = f
+		if f.alias != "" {
+			m[f.alias] = f
+		}
+		value, ok := os.LookupEnv(f.envKey)
+		if ok {
+			f.Set(value)
+		}
+	}
+	key := ""
+	for arg := ""; len(args) > 0; {
+		arg, args = args[0], args[1:]
+		if arg == "-" || arg == "--" {
+			break
+		}
+		if key != "" {
+			f, ok := m[key]
+			if !ok {
+				if strict {
+					return nil, ErrUndefinedFlag(key)
+				}
+				continue
+			}
+			if !f.kind.HasArg() {
+				key = ""
+				args = append([]string{arg}, args...)
+				f.Set("true")
+				continue
+			}
+			if arg[0] == '-' {
+				return nil, ErrRequiresArg(key)
+			}
+			key = ""
+			f.Set(arg)
 			continue
 		}
-		data := &helpData{a.name, cmd}
-		tmpl(os.Stdout, helpTemplate, data)
-		return
-	}
-
-	fmt.Fprintf(os.Stderr, "Unknown help topic %#q.\n", name)
-	fmt.Fprintf(os.Stderr, "Run `%s help`.\n", a.name)
-	os.Exit(2)
-}
-
-func (a *Application) similar() []*Command {
-	var rv []*Command
-	for _, cmd := range a.commands {
-		if !cmd.native && cmd.distance < similarThreshold {
-			rv = append(rv, cmd)
+		if arg == "" || arg[0] != '-' {
+			args = append([]string{arg}, args...)
+			break
+		}
+		if arg[1] == '-' {
+			arg = arg[2:]
+		} else {
+			arg = arg[1:]
+		}
+		if !unicode.IsLetter(rune(arg[0])) {
+			return nil, ErrFlagSyntax(arg)
+		}
+		i := strings.Index(arg, "=")
+		if i == -1 {
+			key = arg
+		} else {
+			key = arg[:i]
+			f, ok := m[key]
+			if !ok {
+				if strict {
+					return nil, ErrUndefinedFlag(key)
+				}
+				continue
+			}
+			key = ""
+			f.Set(arg[i+1:])
 		}
 	}
-	return rv
-}
-
-func (a *Application) printUsage(w io.Writer) {
-	data := usageData{a.name, a.commands}
-	tmpl(w, usageTemplate, data)
-}
-
-func (a *Application) usage() {
-	a.printUsage(os.Stderr)
-	os.Exit(2)
+	if key != "" {
+		f, ok := m[key]
+		if ok {
+			if f.kind.HasArg() {
+				return nil, ErrRequiresArg(key)
+			}
+			f.Set("true")
+		} else {
+			if strict {
+				return nil, ErrUndefinedFlag(key)
+			}
+		}
+	}
+	return args, nil
 }

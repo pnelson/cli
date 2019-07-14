@@ -11,7 +11,6 @@ func TestLevenshtein(t *testing.T) {
 		{3, "kitten", "sitting"},
 		{3, "Saturday", "Sunday"},
 	}
-
 	for i, tt := range tests {
 		v := levenshtein(tt.s, tt.t)
 		if v != tt.v {
