@@ -42,6 +42,41 @@ func TestParse(t *testing.T) {
 	}
 }
 
+func TestParseArgs(t *testing.T) {
+	tests := map[string][]string{
+		"-gs1 string":        []string{},
+		"-gs1=string":        []string{},
+		"-gb1":               []string{},
+		"-gs1 string -gb1":   []string{},
+		"-gb1 -gs1 string":   []string{},
+		"--gb1 --gs1 string": []string{},
+		"-":                  []string{"-"},
+		"--":                 []string{"--"},
+		"-- arg":             []string{"--", "arg"},
+		"arg":                []string{"arg"},
+		"-gs1 string -":      []string{"-"},
+		"-gs1 string --":     []string{"--"},
+		"-gs1 string -- arg": []string{"--", "arg"},
+		"-gs1 string arg":    []string{"arg"},
+	}
+	for line, want := range tests {
+		c := &testCLI{}
+		args := strings.Split(line, " ")
+		flags := []*Flag{
+			NewFlag("gs1", "global string 1", &c.gs1),
+			NewFlag("gs2", "global string 2", &c.gs2),
+			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
+		}
+		have, err := Parse(args, flags, true)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !reflect.DeepEqual(have, want) {
+			t.Fatalf("args for '%s'\nhave %v\nwant %v", line, have, want)
+		}
+	}
+}
+
 func TestParseUndefined(t *testing.T) {
 	tests := map[string]struct{}{
 		"-undefined":                    struct{}{},

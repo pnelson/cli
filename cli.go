@@ -313,6 +313,7 @@ func Parse(args []string, flags []*Flag, strict bool) ([]string, error) {
 	for arg := ""; len(args) > 0; {
 		arg, args = args[0], args[1:]
 		if arg == "-" || arg == "--" {
+			args = append([]string{arg}, args...)
 			break
 		}
 		if key != "" {
