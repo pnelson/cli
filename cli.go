@@ -29,6 +29,7 @@ type CLI struct {
 	version        string
 	stdout         io.Writer
 	stderr         io.Writer
+	afterParse     Handler
 	helpHandler    Handler
 	defaultHandler Handler
 	usageFormatter UsageFormatter
@@ -123,6 +124,12 @@ func (c *CLI) run(args []string) error {
 	args, err = c.parse(args, cmd.flags)
 	if err != nil {
 		return err
+	}
+	if c.afterParse != nil {
+		err = c.afterParse(args)
+		if err != nil {
+			return err
+		}
 	}
 	return cmd.handler(args)
 }
@@ -291,6 +298,14 @@ func Stderr(w io.Writer) Option {
 func Strict(strict bool) Option {
 	return func(c *CLI) {
 		c.strict = strict
+	}
+}
+
+// AfterParse sets the handler to run after parsing
+// and before dispatching to the command.
+func AfterParse(fn Handler) Option {
+	return func(c *CLI) {
+		c.afterParse = fn
 	}
 }
 
