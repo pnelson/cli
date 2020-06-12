@@ -125,7 +125,7 @@ func (c *CLI) run(args []string) error {
 	if err != nil {
 		return err
 	}
-	if c.afterParse != nil {
+	if c.afterParse != nil && name != "help" && name != "version" {
 		err = c.afterParse(args)
 		if err != nil {
 			return err
@@ -302,7 +302,8 @@ func Strict(strict bool) Option {
 }
 
 // AfterParse sets the handler to run after parsing
-// and before dispatching to the command.
+// and before dispatching to the command. AfterParse
+// is not called after the help or version commands.
 func AfterParse(fn Handler) Option {
 	return func(c *CLI) {
 		c.afterParse = fn
