@@ -91,7 +91,10 @@ func defaultUsageFormatter(w io.Writer, u Usage) error {
 // tmpl parses text and applies data to it writing the output to w.
 func tmpl(w io.Writer, text string, data interface{}) error {
 	t := template.New("tmpl")
-	template.Must(t.Parse(text))
+	_, err := t.Parse(text)
+	if err != nil {
+		return err
+	}
 	return t.Execute(w, data)
 }
 
