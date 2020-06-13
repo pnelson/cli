@@ -109,14 +109,14 @@ Usage:
 
 Options:
 {{range .Flags}}
-    {{.Name | printf "%-11s"}} {{.Usage}}{{end}}
+    {{.Name | printf "%-16s"}} {{.Usage}}{{end}}
 {{- end -}}
 
 {{- if .HasCommands }}
 
 Commands:
 {{range .Commands}}
-    {{.Name | printf "%-11s"}} {{.Summary}}{{end}}
+    {{.Name | printf "%-16s"}} {{.Summary}}{{end}}
 {{- end }}
 
 Run '{{.Name}} help [command]' for more information about a command.
@@ -129,7 +129,7 @@ var tmplCommandUsage = `{{.Usage}}
 {{ if .HasFlags -}}
 Options:
 {{range .Flags}}
-    {{.Name | printf "%-11s"}} {{.Usage}}{{end}}
+    {{.Name | printf "%-16s"}} {{.Usage}}{{end}}
 {{- end }}
 
 `
