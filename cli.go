@@ -25,7 +25,6 @@ type CLI struct {
 	flagsMap       map[string]*Flag
 	commands       []*Command
 	commandsMap    map[string]*Command
-	resolve        Resolver
 	version        string
 	stdout         io.Writer
 	stderr         io.Writer
@@ -44,7 +43,6 @@ func New(name, usage string, flags []*Flag, opts ...Option) *CLI {
 		flagsMap:       make(map[string]*Flag),
 		commands:       make([]*Command, 0),
 		commandsMap:    make(map[string]*Command),
-		resolve:        defaultResolver,
 		stdout:         os.Stdout,
 		stderr:         os.Stderr,
 		usageFormatter: defaultUsageFormatter,
@@ -90,13 +88,12 @@ func (c *CLI) Add(name string, handler Handler, usage string, flags []*Flag, opt
 
 // Run parses the command line arguments, starting with the
 // program name, and dispatches to the appropriate handler.
-func (c *CLI) Run(args []string) {
+func (c *CLI) Run(args []string) error {
 	c.sortCommandsByName()
 	if args == nil {
 		args = os.Args
 	}
-	err := c.run(args)
-	c.resolve(err)
+	return c.run(args)
 }
 
 // sortCommandsByName sorts the command list in ascending alphabetical order.
@@ -279,13 +276,6 @@ func Version(version string) Option {
 func Default(handler Handler) Option {
 	return func(c *CLI) {
 		c.defaultHandler = handler
-	}
-}
-
-// ErrorResolver sets the error resolver.
-func ErrorResolver(resolver Resolver) Option {
-	return func(c *CLI) {
-		c.resolve = resolver
 	}
 }
 

@@ -209,29 +209,19 @@ func TestAddDuplicateCommandAlias(t *testing.T) {
 }
 
 func TestRunDefaultCommand(t *testing.T) {
-	var testRunError bool
-	opts := []Option{
-		Stderr(ioutil.Discard),
-		ErrorResolver(func(err error) { testRunError = true }),
-	}
-	app := New("appname", "usage", nil, opts...)
-	app.Run([]string{"appname"})
-	if !testRunError {
+	app := New("appname", "usage", nil, Stderr(ioutil.Discard))
+	err := app.Run([]string{"appname"})
+	if err == nil {
 		t.Fatalf("default command should error")
 	}
 }
 
 func TestRunCommandError(t *testing.T) {
-	var testRunError error
-	opts := []Option{
-		Stderr(ioutil.Discard),
-		ErrorResolver(func(err error) { testRunError = err }),
-	}
 	c := &testCLI{}
-	app := New("appname", "usage", nil, opts...)
+	app := New("appname", "usage", nil, Stderr(ioutil.Discard))
 	app.Add("test", c.testCommandFailure, "usage", nil)
-	app.Run([]string{"appname", "test"})
-	if testRunError != errCommandFailure {
-		t.Fatalf("Run error\nhave %v\nwant %v", testRunError, errCommandFailure)
+	err := app.Run([]string{"appname", "test"})
+	if err != errCommandFailure {
+		t.Fatalf("Run error\nhave %v\nwant %v", err, errCommandFailure)
 	}
 }

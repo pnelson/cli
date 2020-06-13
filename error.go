@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"os"
 )
 
 // ErrFlagSyntax represents an error for bad arguments.
@@ -27,14 +26,4 @@ type ErrRequiresArg string
 // Error implements the error interface.
 func (e ErrRequiresArg) Error() string {
 	return fmt.Sprintf("Flag '%s' requires an argument.", string(e))
-}
-
-// Resolver represents the ability to resolve an error.
-type Resolver func(err error)
-
-// defaultResolver is the default resolver implementation.
-func defaultResolver(err error) {
-	if err != nil {
-		os.Exit(1)
-	}
 }
