@@ -172,8 +172,8 @@ func (c *CLI) initFlags(flags []*Flag) error {
 
 // commandNotFound prints helpful usage information and suggestions.
 func (c *CLI) commandNotFound(name string) error {
-	fmt.Fprintf(c.stderr, "Unknown command '%s'.\n", name)
-	fmt.Fprintf(c.stderr, "Run '%s help' for usage information.\n", c.name)
+	c.Errorf("Unknown command '%s'.\n", name)
+	c.Errorf("Run '%s help' for usage information.\n", c.name)
 	similar := make([]*Command, 0)
 	for _, cmd := range c.commands {
 		distance := 0
@@ -185,13 +185,23 @@ func (c *CLI) commandNotFound(name string) error {
 		}
 	}
 	if len(similar) > 0 {
-		fmt.Fprintf(c.stderr, "\nDid you mean?\n\n")
+		c.Errorf("\nDid you mean?\n\n")
 		for _, cmd := range similar {
-			fmt.Fprintf(c.stderr, "    %s\n", cmd.name)
+			c.Errorf("    %s\n", cmd.name)
 		}
-		fmt.Fprintf(c.stderr, "\n")
+		c.Errorf("\n")
 	}
 	return errors.New("cli: unknown command")
+}
+
+// Printf writes to the configured stdout writer.
+func (c *CLI) Printf(format string, args ...interface{}) {
+	fmt.Fprintf(c.stdout, format, args...)
+}
+
+// Errorf writes to the configured stderr writer.
+func (c *CLI) Errorf(format string, args ...interface{}) {
+	fmt.Fprintf(c.stderr, format, args...)
 }
 
 // defaultHelpHandler is the default handler for the help command.
@@ -200,16 +210,16 @@ func (c *CLI) defaultHelpHandler(args []string) error {
 		return c.Usage(c.stdout)
 	}
 	if len(args) != 1 {
-		fmt.Fprintf(c.stderr, "Too many arguments given.\n")
-		fmt.Fprintf(c.stderr, "Run '%s help' for usage information.\n", c.name)
-		fmt.Fprintf(c.stderr, "Run '%s help [command]' for more information about a command.\n", c.name)
+		c.Errorf("Too many arguments given.\n")
+		c.Errorf("Run '%s help' for usage information.\n", c.name)
+		c.Errorf("Run '%s help [command]' for more information about a command.\n", c.name)
 		return errors.New("cli: too many arguments")
 	}
 	name := args[0]
 	cmd, ok := c.commandsMap[name]
 	if !ok {
-		fmt.Fprintf(c.stderr, "Unknown help topic '%s'.\n", name)
-		fmt.Fprintf(c.stderr, "Run '%s help' for usage information.\n", c.name)
+		c.Errorf("Unknown help topic '%s'.\n", name)
+		c.Errorf("Run '%s help' for usage information.\n", c.name)
 		return errors.New("cli: unknown help topic")
 	}
 	u := newCommandUsage(cmd)
@@ -227,7 +237,7 @@ func (c *CLI) defaultDefaultHandler(args []string) error {
 
 // versionHandler is the handler for the version command.
 func (c *CLI) versionHandler(args []string) error {
-	fmt.Fprintf(c.stdout, "%s\n", c.version)
+	c.Printf("%s\n", c.version)
 	return nil
 }
 
