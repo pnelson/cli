@@ -27,7 +27,7 @@ func TestParse(t *testing.T) {
 			NewFlag("gs2", "global string 2", &c.gs2),
 			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
 		}
-		have, err := Parse(args, flags, true)
+		have, err := Parse(args, flags)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -67,7 +67,7 @@ func TestParseArgs(t *testing.T) {
 			NewFlag("gs2", "global string 2", &c.gs2),
 			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
 		}
-		have, err := Parse(args, flags, true)
+		have, err := Parse(args, flags)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -97,19 +97,11 @@ func TestParseUndefined(t *testing.T) {
 			NewFlag("gs2", "global string 2", &c.gs2),
 			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
 		}
-		t.Run("strict=on", func(t *testing.T) {
-			want := ErrUndefinedFlag("undefined")
-			_, err := Parse(args, flags, true)
-			if !reflect.DeepEqual(err, want) {
-				t.Fatalf("error for '%s'\nhave %v\nwant %v", line, err, want)
-			}
-		})
-		t.Run("strict=off", func(t *testing.T) {
-			_, err := Parse(args, flags, false)
-			if err != nil {
-				t.Fatalf("error for '%s'\nhave %v\nwant %v", line, err, nil)
-			}
-		})
+		want := ErrUndefinedFlag("undefined")
+		_, err := Parse(args, flags)
+		if !reflect.DeepEqual(err, want) {
+			t.Fatalf("should return undefined flag error for '%s'", line)
+		}
 	}
 }
 
@@ -131,7 +123,7 @@ func TestParseRequiresArg(t *testing.T) {
 			NewFlag("gs2", "global string 2", &c.gs2),
 			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
 		}
-		_, err := Parse(args, flags, true)
+		_, err := Parse(args, flags)
 		if !reflect.DeepEqual(err, want) {
 			t.Fatalf("error for '%s'\nhave %v\nwant %v", line, err, want)
 		}
@@ -145,7 +137,7 @@ func TestParseEnv(t *testing.T) {
 	c := &testCLI{}
 	args := []string{}
 	flags := []*Flag{NewFlag("gs1", "global string 1", &c.gs1, EnvironmentKey(env))}
-	_, err := Parse(args, flags, true)
+	_, err := Parse(args, flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

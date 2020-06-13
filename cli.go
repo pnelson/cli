@@ -20,7 +20,6 @@ var (
 type CLI struct {
 	name           string
 	usage          string
-	strict         bool
 	flags          []*Flag
 	flagsMap       map[string]*Flag
 	commands       []*Command
@@ -140,7 +139,7 @@ func (c *CLI) parse(args []string, flags []*Flag) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return Parse(args[1:], flags, c.strict)
+	return Parse(args[1:], flags)
 }
 
 // initFlags populates the application flag map and
@@ -293,14 +292,6 @@ func Stderr(w io.Writer) Option {
 	}
 }
 
-// Strict sets the flag parsing behavior for parsing undefined flags.
-// The resolver is triggered if strict mode is enabled. Defaults to true.
-func Strict(strict bool) Option {
-	return func(c *CLI) {
-		c.strict = strict
-	}
-}
-
 // AfterParse sets the handler to run after parsing
 // and before dispatching to the command. AfterParse
 // is not called after the help or version commands.
@@ -313,7 +304,7 @@ func AfterParse(fn Handler) Option {
 // Parse parses flag definitions from the argument list. Flag parsing stops
 // at the first non-flag argument, including single or double hyphens followed
 // by whitespace or end of input.
-func Parse(args []string, flags []*Flag, strict bool) ([]string, error) {
+func Parse(args []string, flags []*Flag) ([]string, error) {
 	m := make(map[string]*Flag)
 	for _, f := range flags {
 		m[f.name] = f
@@ -335,10 +326,7 @@ func Parse(args []string, flags []*Flag, strict bool) ([]string, error) {
 		if key != "" {
 			f, ok := m[key]
 			if !ok {
-				if strict {
-					return nil, ErrUndefinedFlag(key)
-				}
-				continue
+				return nil, ErrUndefinedFlag(key)
 			}
 			if !f.kind.HasArg() {
 				key = ""
@@ -372,10 +360,7 @@ func Parse(args []string, flags []*Flag, strict bool) ([]string, error) {
 			key = arg[:i]
 			f, ok := m[key]
 			if !ok {
-				if strict {
-					return nil, ErrUndefinedFlag(key)
-				}
-				continue
+				return nil, ErrUndefinedFlag(key)
 			}
 			key = ""
 			f.Set(arg[i+1:])
@@ -389,9 +374,7 @@ func Parse(args []string, flags []*Flag, strict bool) ([]string, error) {
 			}
 			f.Set("true")
 		} else {
-			if strict {
-				return nil, ErrUndefinedFlag(key)
-			}
+			return nil, ErrUndefinedFlag(key)
 		}
 	}
 	return args, nil
