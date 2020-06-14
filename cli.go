@@ -91,6 +91,8 @@ func (c *CLI) Run(args []string) error {
 	c.sortCommandsByName()
 	if args == nil {
 		args = os.Args
+	} else if len(args) == 0 {
+		args = []string{c.name}
 	}
 	return c.run(args)
 }
@@ -132,9 +134,6 @@ func (c *CLI) run(args []string) error {
 
 // parse processes args as flags until there are no longer flags.
 func (c *CLI) parse(args []string, flags []*Flag) ([]string, error) {
-	if len(args) < 1 {
-		return nil, errors.New("cli: must have args")
-	}
 	err := c.initFlags(flags)
 	if err != nil {
 		return nil, err
