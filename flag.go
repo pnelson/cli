@@ -7,11 +7,11 @@ import (
 
 // Flag represents a flag.
 type Flag struct {
-	set          bool
 	flag         reflect.Value
 	kind         FlagKind
 	name         string
 	alias        string
+	count        int
 	value        string
 	usage        string
 	envKey       string
@@ -38,14 +38,19 @@ func NewFlag(name, usage string, flag interface{}, opts ...FlagOption) *Flag {
 	return f
 }
 
+// Count returns the number of times the flag was set.
+func (f *Flag) Count() int {
+	return f.count
+}
+
 // IsSet returns true if the flag was explicitly set.
 func (f *Flag) IsSet() bool {
-	return f.set
+	return f.count > 0
 }
 
 // Set sets the flag value.
 func (f *Flag) Set(value string) {
-	f.set = true
+	f.count++
 	f.flag.Set(reflect.ValueOf(f.kind.Parse(value)))
 	f.value = value
 }
