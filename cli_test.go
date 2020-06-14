@@ -203,7 +203,7 @@ func TestAddDuplicateCommandAlias(t *testing.T) {
 func TestRunDefaultCommand(t *testing.T) {
 	app := New("appname", "usage", nil, Stderr(ioutil.Discard))
 	err := app.Run([]string{"appname"})
-	if err == nil {
+	if err != ErrExitFailure {
 		t.Fatalf("default command should error")
 	}
 }

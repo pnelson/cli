@@ -4,6 +4,13 @@ import (
 	"fmt"
 )
 
+// ErrExitFailure represents errors that should immediately
+// exit with failure status. All output to stdout or stderr
+// should be written before a handler returns this value, as
+// is the case for built in usage. It is the package user's
+// responsibility to handle this error.
+var ErrExitFailure = fmt.Errorf("1")
+
 // ErrFlagSyntax represents an error for bad arguments.
 type ErrFlagSyntax string
 

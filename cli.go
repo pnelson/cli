@@ -2,7 +2,6 @@
 package cli
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -147,13 +146,13 @@ func (c *CLI) initFlags(flags []*Flag) error {
 	for _, f := range flags {
 		_, ok := c.flagsMap[f.name]
 		if ok {
-			return fmt.Errorf("cli: duplicate flag '%s'", f.name)
+			return fmt.Errorf("Duplicate flag '%s'.", f.name)
 		}
 		c.flagsMap[f.name] = f
 		if f.alias != "" {
-			dup, ok := c.flagsMap[f.alias]
+			_, ok := c.flagsMap[f.alias]
 			if ok {
-				return fmt.Errorf("cli: duplicate short flag '%s' for '%s'", f.alias, dup.name)
+				return fmt.Errorf("Duplicate short flag '%s' for '%s'.", f.alias, f.name)
 			}
 			c.flagsMap[f.alias] = f
 		}
@@ -186,7 +185,7 @@ func (c *CLI) commandNotFound(name string) error {
 		}
 		c.Errorf("\n")
 	}
-	return errors.New("cli: unknown command")
+	return ErrExitFailure
 }
 
 // Printf writes to the configured stdout writer.
@@ -208,14 +207,14 @@ func (c *CLI) defaultHelpHandler(args []string) error {
 		c.Errorf("Too many arguments given.\n")
 		c.Errorf("Run '%s help' for usage information.\n", c.name)
 		c.Errorf("Run '%s help [command]' for more information about a command.\n", c.name)
-		return errors.New("cli: too many arguments")
+		return ErrExitFailure
 	}
 	name := args[0]
 	cmd, ok := c.commandsMap[name]
 	if !ok {
 		c.Errorf("Unknown help topic '%s'.\n", name)
 		c.Errorf("Run '%s help' for usage information.\n", c.name)
-		return errors.New("cli: unknown help topic")
+		return ErrExitFailure
 	}
 	u := newCommandUsage(cmd)
 	return tmpl(c.stdout, tmplCommandUsage, u)
@@ -227,7 +226,7 @@ func (c *CLI) defaultDefaultHandler(args []string) error {
 	if err != nil {
 		return err
 	}
-	return errors.New("cli: no command")
+	return ErrExitFailure
 }
 
 // versionHandler is the handler for the version command.
