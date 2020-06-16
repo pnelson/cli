@@ -94,7 +94,11 @@ func (c *CLI) Run(args []string) error {
 	for len(args) > 0 && args[len(args)-1] == "" {
 		args = args[:len(args)-1]
 	}
-	return c.run(args)
+	err := c.run(args)
+	if err != nil && err != ErrExitFailure {
+		c.Errorf("%v\n", err)
+	}
+	return err
 }
 
 // run parses the root command and dispatches to the given subcommand.
