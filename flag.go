@@ -13,7 +13,6 @@ type Flag struct {
 	alias        string
 	count        int
 	value        string
-	usage        string
 	envKey       string
 	defaultValue string
 }
@@ -21,16 +20,15 @@ type Flag struct {
 // NewFlag returns a new flag. The flag must be a pointer. You must pass the
 // Kind option so the flag parser knows how to process the command line unless
 // the flag points to a string, the default flag kind.
-func NewFlag(name, usage string, flag interface{}, opts ...FlagOption) *Flag {
+func NewFlag(name string, flag interface{}, opts ...FlagOption) *Flag {
 	v := reflect.ValueOf(flag)
 	if v.Kind() != reflect.Ptr {
 		panic("cli: flag must be pointer")
 	}
 	f := &Flag{
-		flag:  v.Elem(),
-		kind:  flagString{},
-		name:  strings.ToLower(name),
-		usage: strings.TrimSpace(usage),
+		flag: v.Elem(),
+		kind: flagString{},
+		name: strings.ToLower(name),
 	}
 	for _, option := range opts {
 		option(f)

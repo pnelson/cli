@@ -1,135 +1,65 @@
 package cli
 
 import (
-	"html/template"
+	"fmt"
 	"io"
-	"strings"
+
+	"github.com/charmbracelet/glamour"
 )
 
-// Usage represents application usage information.
-type Usage struct {
-	Name     string
-	Usage    string
-	Flags    []FlagUsage
-	Commands []CommandUsage
+// Renderer represents the ability to
+// render help topics to terminal output.
+type Renderer interface {
+	Render(name string) ([]byte, error)
 }
 
-// HasFlags returns true if global flags are available.
-func (u Usage) HasFlags() bool {
-	return len(u.Flags) > 0
+// defaultRenderer is the default Renderer implementation.
+type defaultRenderer struct {
+	data     map[string][]byte
+	renderer *glamour.TermRenderer
 }
 
-// HasCommands returns true if global commands are available.
-func (u Usage) HasCommands() bool {
-	return len(u.Commands) > 0
-}
-
-// FlagUsage represents flag usage information.
-type FlagUsage struct {
-	Name    string
-	Alias   string
-	Usage   string
-	Value   string
-	Default string
-}
-
-// newFlagUsage returns the usage information for f.
-func newFlagUsage(f *Flag) FlagUsage {
-	return FlagUsage{
-		Name:    "-" + f.name,
-		Alias:   f.alias,
-		Usage:   f.usage,
-		Value:   f.value,
-		Default: f.defaultValue,
-	}
-}
-
-// CommandUsage represents command usage information.
-type CommandUsage struct {
-	Name  string
-	Alias string
-	Usage string
-	Flags []FlagUsage
-}
-
-// HasFlags returns true if command flags are available.
-func (u CommandUsage) HasFlags() bool {
-	return len(u.Flags) > 0
-}
-
-// Summary returns the first line of the command usage information.
-func (u CommandUsage) Summary() string {
-	i := strings.Index(u.Usage, "\n")
-	if i == -1 {
-		return u.Usage
-	}
-	return u.Usage[:i]
-}
-
-// newCommandUsage returns the usage information for cmd.
-func newCommandUsage(cmd *Command) CommandUsage {
-	u := CommandUsage{
-		Name:  cmd.name,
-		Alias: cmd.alias,
-		Usage: cmd.usage,
-		Flags: make([]FlagUsage, len(cmd.flags)),
-	}
-	for i, f := range cmd.flags {
-		u.Flags[i] = newFlagUsage(f)
-	}
-	return u
-}
-
-// UsageFormatter represents the ability to render usage information.
-type UsageFormatter func(w io.Writer, u Usage) error
-
-// defaultUsageFormatter is the default usage formatter implementation.
-func defaultUsageFormatter(w io.Writer, u Usage) error {
-	return tmpl(w, tmplUsage, u)
-}
-
-// tmpl parses text and applies data to it writing the output to w.
-func tmpl(w io.Writer, text string, data interface{}) error {
-	t := template.New("tmpl")
-	_, err := t.Parse(text)
+// NewRenderer returns the default Renderer implementation.
+func NewRenderer(data map[string][]byte) Renderer {
+	renderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
 	if err != nil {
-		return err
+		panic(fmt.Errorf("cli: failure to initialize renderer"))
 	}
-	return t.Execute(w, data)
+	return &defaultRenderer{
+		data:     data,
+		renderer: renderer,
+	}
 }
 
-// tmplUsage represents the default application usage information template.
-var tmplUsage = `{{.Usage}}
+// Render implements the Renderer interface.
+func (r *defaultRenderer) Render(name string) ([]byte, error) {
+	b, ok := r.data[name]
+	if !ok {
+		return nil, ErrUsageNotFound
+	}
+	return r.renderer.RenderBytes(b)
+}
 
-Usage:
-
-    {{.Name}} [options] [command] [args...]
-
-{{- if .HasFlags }}
-
-Options:
-{{range .Flags}}
-    {{.Name | printf "%-16s"}} {{.Usage}}{{end}}
-{{- end -}}
-
-{{- if .HasCommands }}
-
-Commands:
-{{range .Commands}}
-    {{.Name | printf "%-16s"}} {{.Summary}}{{end}}
-{{- end }}
-
-Run '{{.Name}} help [command]' for more information about a command.
-
-`
-
-// tmplCommandUsage represents the default command usage information template.
-var tmplCommandUsage = `{{.Usage}}
-
-{{ if .HasFlags -}}
-Options:
-{{range .Flags}}
-    {{.Name | printf "%-16s"}} {{.Usage}}{{end}}
-{{- end }}
-
-`
+// Usage displays the application usage information.
+func (c *CLI) Usage(w io.Writer, name string) error {
+	key := name
+	_, ok := c.commands[name]
+	if ok {
+		key = c.scope + name
+	}
+	b, err := c.usage.Render(key)
+	if err != nil {
+		if err != ErrUsageNotFound {
+			return err
+		}
+		if name == "" || name == c.scope {
+			c.Errorf("Unknown help topic.\n")
+		} else {
+			c.Errorf("Unknown help topic '%s'.\n", name)
+		}
+		c.Errorf("Run '%s help' for usage information.\n", c.name)
+		return ErrExitFailure
+	}
+	_, err = w.Write(b)
+	return err
+}

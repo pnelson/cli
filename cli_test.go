@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"io/ioutil"
 	"os"
@@ -8,6 +9,23 @@ import (
 	"strings"
 	"testing"
 )
+
+type testCLI struct {
+	gs1  string
+	gs2  string
+	gb1  bool
+	args []string
+}
+
+var errCommandFailure = errors.New("cli: command failure")
+
+func testCommand(args []string) error {
+	return nil
+}
+
+func testCommandFailure(args []string) error {
+	return errCommandFailure
+}
 
 func TestParse(t *testing.T) {
 	tests := map[string]*testCLI{
@@ -23,9 +41,9 @@ func TestParse(t *testing.T) {
 		c := &testCLI{}
 		args := strings.Split(line, " ")
 		flags := []*Flag{
-			NewFlag("gs1", "global string 1", &c.gs1),
-			NewFlag("gs2", "global string 2", &c.gs2),
-			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
+			NewFlag("gs1", &c.gs1),
+			NewFlag("gs2", &c.gs2),
+			NewFlag("gb1", &c.gb1, Bool()),
 		}
 		have, err := Parse(args, flags)
 		if err != nil {
@@ -63,9 +81,9 @@ func TestParseArgs(t *testing.T) {
 		c := &testCLI{}
 		args := strings.Split(line, " ")
 		flags := []*Flag{
-			NewFlag("gs1", "global string 1", &c.gs1),
-			NewFlag("gs2", "global string 2", &c.gs2),
-			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
+			NewFlag("gs1", &c.gs1),
+			NewFlag("gs2", &c.gs2),
+			NewFlag("gb1", &c.gb1, Bool()),
 		}
 		have, err := Parse(args, flags)
 		if err != nil {
@@ -93,9 +111,9 @@ func TestParseUndefined(t *testing.T) {
 		c := &testCLI{}
 		args := strings.Split(line, " ")
 		flags := []*Flag{
-			NewFlag("gs1", "global string 1", &c.gs1),
-			NewFlag("gs2", "global string 2", &c.gs2),
-			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
+			NewFlag("gs1", &c.gs1),
+			NewFlag("gs2", &c.gs2),
+			NewFlag("gb1", &c.gb1, Bool()),
 		}
 		want := ErrUndefinedFlag("undefined")
 		_, err := Parse(args, flags)
@@ -119,9 +137,9 @@ func TestParseRequiresArg(t *testing.T) {
 		c := &testCLI{}
 		args := strings.Split(line, " ")
 		flags := []*Flag{
-			NewFlag("gs1", "global string 1", &c.gs1),
-			NewFlag("gs2", "global string 2", &c.gs2),
-			NewFlag("gb1", "global bool 1", &c.gb1, Bool()),
+			NewFlag("gs1", &c.gs1),
+			NewFlag("gs2", &c.gs2),
+			NewFlag("gb1", &c.gb1, Bool()),
 		}
 		_, err := Parse(args, flags)
 		if !reflect.DeepEqual(err, want) {
@@ -136,7 +154,7 @@ func TestParseEnv(t *testing.T) {
 	os.Setenv(env, want)
 	c := &testCLI{}
 	args := []string{}
-	flags := []*Flag{NewFlag("gs1", "global string 1", &c.gs1, EnvironmentKey(env))}
+	flags := []*Flag{NewFlag("gs1", &c.gs1, EnvironmentKey(env))}
 	_, err := Parse(args, flags)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -153,25 +171,8 @@ func TestAddNilHandler(t *testing.T) {
 			t.Fatalf("nil handler should panic")
 		}
 	}()
-	app := New("appname", "usage", nil)
-	app.Add("foo", nil, "usage", nil)
-}
-
-type testCLI struct {
-	gs1  string
-	gs2  string
-	gb1  bool
-	args []string
-}
-
-func (c *testCLI) testCommandSuccess(args []string) error {
-	return nil
-}
-
-var errCommandFailure = errors.New("cli: command failure")
-
-func (c *testCLI) testCommandFailure(args []string) error {
-	return errCommandFailure
+	app := New("appname", testUsage, nil)
+	app.Add("foo", nil, nil)
 }
 
 func TestAddDuplicateCommand(t *testing.T) {
@@ -181,10 +182,9 @@ func TestAddDuplicateCommand(t *testing.T) {
 			t.Fatalf("duplicate command should panic")
 		}
 	}()
-	c := &testCLI{}
-	app := New("appname", "usage", nil)
-	app.Add("test", c.testCommandSuccess, "usage", nil)
-	app.Add("test", c.testCommandSuccess, "usage", nil)
+	app := New("appname", testUsage, nil)
+	app.Add("test", testCommand, nil)
+	app.Add("test", testCommand, nil)
 }
 
 func TestAddDuplicateCommandAlias(t *testing.T) {
@@ -194,24 +194,37 @@ func TestAddDuplicateCommandAlias(t *testing.T) {
 			t.Fatalf("duplicate command alias should panic")
 		}
 	}()
-	c := &testCLI{}
-	app := New("appname", "usage", nil)
-	app.Add("test", c.testCommandSuccess, "usage", nil)
-	app.Add("aliased", c.testCommandSuccess, "usage", nil, Alias("test"))
+	app := New("appname", testUsage, nil)
+	app.Add("test", testCommand, nil)
+	app.Add("aliased", testCommand, nil, Alias("test"))
 }
 
 func TestRunDefaultCommand(t *testing.T) {
-	app := New("appname", "usage", nil, Stderr(ioutil.Discard))
+	var buf bytes.Buffer
+	app := New("appname", testUsage, nil, Stderr(&buf))
 	err := app.Run([]string{"appname"})
 	if err != ErrExitFailure {
 		t.Fatalf("default command should error")
 	}
+	have := buf.Bytes()
+	want := testUsage[""]
+	if !reflect.DeepEqual(have, want) {
+		t.Fatalf("should return root usage docs\nhave '%s'\nwant '%s'", have, want)
+	}
+}
+
+func TestRunHelpError(t *testing.T) {
+	app := New("appname", testUsage, nil, Stderr(ioutil.Discard))
+	app.Add("test", func([]string) error { return nil }, nil)
+	err := app.Run([]string{"appname", "help", "test", "fail"})
+	if err != ErrExitFailure {
+		t.Fatalf("help command should error")
+	}
 }
 
 func TestRunCommandError(t *testing.T) {
-	c := &testCLI{}
-	app := New("appname", "usage", nil, Stderr(ioutil.Discard))
-	app.Add("test", c.testCommandFailure, "usage", nil)
+	app := New("appname", testUsage, nil, Stderr(ioutil.Discard))
+	app.Add("test", testCommandFailure, nil)
 	err := app.Run([]string{"appname", "test"})
 	if err != errCommandFailure {
 		t.Fatalf("Run error\nhave %v\nwant %v", err, errCommandFailure)

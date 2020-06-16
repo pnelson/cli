@@ -4,7 +4,7 @@ import "testing"
 
 func TestNewFlag(t *testing.T) {
 	var flag string
-	f := NewFlag("flag", "test", &flag)
+	f := NewFlag("flag", &flag)
 	if f == nil {
 		t.Fatal("should return a flag")
 	}
@@ -21,12 +21,12 @@ func TestNewFlagPanic(t *testing.T) {
 			t.Fatal("should panic")
 		}
 	}()
-	_ = NewFlag("flag", "test", flag)
+	_ = NewFlag("flag", flag)
 }
 
 func TestFlagSet(t *testing.T) {
 	var flag string
-	f := NewFlag("flag", "test", &flag)
+	f := NewFlag("flag", &flag)
 	f.Set("test")
 	if f.String() != "test" {
 		t.Fatal("should set flag value")
@@ -38,7 +38,7 @@ func TestFlagSet(t *testing.T) {
 
 func TestFlagSetCount(t *testing.T) {
 	var v bool
-	f := NewFlag("verbose", "enable verbose output", &v, Bool(), ShortFlag("v"))
+	f := NewFlag("verbose", &v, Bool(), ShortFlag("v"))
 	f.Set("true")
 	f.Set("true")
 	f.Set("true")

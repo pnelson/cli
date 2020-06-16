@@ -1,8 +1,6 @@
 package cli
 
-import (
-	"fmt"
-)
+import "fmt"
 
 // ErrExitFailure represents errors that should immediately
 // exit with failure status. All output to stdout or stderr
@@ -10,6 +8,11 @@ import (
 // is the case for built in usage. It is the package user's
 // responsibility to handle this error.
 var ErrExitFailure = fmt.Errorf("1")
+
+// ErrUsageNotFound represents the error that should be
+// returned by Usage implementations to signal that the
+// help topic is not found
+var ErrUsageNotFound = fmt.Errorf("cli: usage not found")
 
 // ErrFlagSyntax represents an error for bad arguments.
 type ErrFlagSyntax string
