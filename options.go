@@ -19,6 +19,14 @@ func Version(version string) Option {
 	}
 }
 
+// Scope sets the help topic scope for registered commands.
+// See Usage documentation for more information.
+func Scope(scope string) Option {
+	return func(c *CLI) {
+		c.scope = scope
+	}
+}
+
 // Default sets the handler to execute when no command is given.
 func Default(handler Handler) Option {
 	return func(c *CLI) {
@@ -46,13 +54,5 @@ func Stderr(w io.Writer) Option {
 func AfterParse(fn Handler) Option {
 	return func(c *CLI) {
 		c.afterParse = fn
-	}
-}
-
-// UsageScope sets the subdirectory for
-// command help topics. Defaults to "/".
-func UsageScope(scope string) Option {
-	return func(c *CLI) {
-		c.scope = scope
 	}
 }

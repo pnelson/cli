@@ -20,6 +20,13 @@ type defaultRenderer struct {
 }
 
 // NewRenderer returns the default Renderer implementation.
+//
+// Usage information is rendered through a Markdown to ANSI
+// compatible terminal renderer.
+//
+// The included cli-usage-gen program can generate the data
+// from a directory of Markdown files, or you can roll your
+// own per the Usage topic lookup convention.
 func NewRenderer(data map[string][]byte) Renderer {
 	renderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
 	if err != nil {
@@ -41,6 +48,13 @@ func (r *defaultRenderer) Render(name string) ([]byte, error) {
 }
 
 // Usage displays the application usage information.
+//
+// The renderer will be called with the help topic. The
+// help topic is prefixed with the configured scope if the
+// topic is a registered command. For example, if the scope
+// is "cli" and the "foo" command is registered, "help foo"
+// will call the renderer with "cli/foo" but "help not-found"
+// would passthrough as "not-found" without the scope.
 func (c *CLI) Usage(w io.Writer, name string) error {
 	key := name
 	_, ok := c.commands[name]

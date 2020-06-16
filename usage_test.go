@@ -53,7 +53,7 @@ func TestUsage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		var buf bytes.Buffer
-		opts := []Option{UsageScope(tt.scope), Stdout(&buf), Stderr(ioutil.Discard)}
+		opts := []Option{Scope(tt.scope), Stdout(&buf), Stderr(ioutil.Discard)}
 		app := New("appname", testUsage, nil, opts...)
 		app.Add("test", testCommand, nil)
 		err := app.Run(tt.args)
@@ -70,7 +70,7 @@ func TestUsage(t *testing.T) {
 func TestUsageRoot(t *testing.T) {
 	for _, scope := range []string{"", "cli"} {
 		var buf bytes.Buffer
-		opts := []Option{UsageScope(scope), Stdout(ioutil.Discard), Stderr(&buf)}
+		opts := []Option{Scope(scope), Stdout(ioutil.Discard), Stderr(&buf)}
 		app := New("appname", testUsage, nil, opts...)
 		err := app.Run([]string{"appname"})
 		if err != ErrExitFailure {
