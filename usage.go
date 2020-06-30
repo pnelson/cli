@@ -1,11 +1,6 @@
 package cli
 
-import (
-	"fmt"
-	"io"
-
-	"github.com/charmbracelet/glamour"
-)
+import "io"
 
 // Renderer represents the ability to
 // render help topics to terminal output.
@@ -14,10 +9,7 @@ type Renderer interface {
 }
 
 // defaultRenderer is the default Renderer implementation.
-type defaultRenderer struct {
-	data     map[string][]byte
-	renderer *glamour.TermRenderer
-}
+type defaultRenderer map[string][]byte
 
 // NewRenderer returns the default Renderer implementation.
 //
@@ -28,23 +20,16 @@ type defaultRenderer struct {
 // from a directory of Markdown files, or you can roll your
 // own per the Usage topic lookup convention.
 func NewRenderer(data map[string][]byte) Renderer {
-	renderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
-	if err != nil {
-		panic(fmt.Errorf("cli: failure to initialize renderer"))
-	}
-	return &defaultRenderer{
-		data:     data,
-		renderer: renderer,
-	}
+	return defaultRenderer(data)
 }
 
 // Render implements the Renderer interface.
-func (r *defaultRenderer) Render(name string) ([]byte, error) {
-	b, ok := r.data[name]
+func (r defaultRenderer) Render(name string) ([]byte, error) {
+	b, ok := r[name]
 	if !ok {
 		return nil, ErrUsageNotFound
 	}
-	return r.renderer.RenderBytes(b)
+	return b, nil
 }
 
 // Usage displays the application usage information.
