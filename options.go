@@ -34,6 +34,13 @@ func Default(handler Handler) Option {
 	}
 }
 
+// Stdin sets the stdin reader.
+func Stdin(r io.Reader) Option {
+	return func(c *CLI) {
+		c.stdin = r
+	}
+}
+
 // Stdout sets the stdout writer.
 func Stdout(w io.Writer) Option {
 	return func(c *CLI) {

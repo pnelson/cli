@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,7 @@ type CLI struct {
 	flagsMap       map[string]*Flag
 	commands       map[string]*Command
 	version        string
+	stdin          io.Reader
 	stdout         io.Writer
 	stderr         io.Writer
 	afterParse     Handler
@@ -39,6 +41,7 @@ func New(name string, usage Renderer, flags []*Flag, opts ...Option) *CLI {
 		flags:    flags,
 		flagsMap: make(map[string]*Flag),
 		commands: make(map[string]*Command),
+		stdin:    os.Stdin,
 		stdout:   os.Stdout,
 		stderr:   os.Stderr,
 	}
@@ -194,6 +197,20 @@ func (c *CLI) Printf(format string, args ...interface{}) {
 // Errorf writes to the configured stderr writer.
 func (c *CLI) Errorf(format string, args ...interface{}) {
 	fmt.Fprintf(c.stderr, format, args...)
+}
+
+// Scan reads one line of input on the configured stdin reader.
+func (c *CLI) Scan() string {
+	scanner := bufio.NewScanner(c.stdin)
+	scanner.Scan()
+	return scanner.Text()
+}
+
+// Prompt writes to the configured stdout writer and waits
+// for one line of input on the configured stdin reader.
+func (c *CLI) Prompt(format string, args ...interface{}) string {
+	c.Printf(format, args...)
+	return c.Scan()
 }
 
 // defaultHelpHandler is the default handler for the help command.
