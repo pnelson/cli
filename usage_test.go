@@ -67,6 +67,14 @@ func TestUsage(t *testing.T) {
 	}
 }
 
+func TestUsageNil(t *testing.T) {
+	app := New("appname", nil, nil, Stdout(ioutil.Discard), Stderr(ioutil.Discard))
+	err := app.Usage(nil, "test")
+	if err != ErrExitFailure {
+		t.Fatalf("usage should error")
+	}
+}
+
 func TestUsageRoot(t *testing.T) {
 	for _, scope := range []string{"", "cli"} {
 		var buf bytes.Buffer

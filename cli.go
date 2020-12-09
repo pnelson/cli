@@ -35,6 +35,9 @@ type CLI struct {
 
 // New returns a new CLI application.
 func New(name string, usage Renderer, flags []*Flag, opts ...Option) *CLI {
+	if usage == nil {
+		usage = make(defaultRenderer)
+	}
 	c := &CLI{
 		name:     name,
 		usage:    usage,
