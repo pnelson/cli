@@ -54,12 +54,3 @@ func Stderr(w io.Writer) Option {
 		c.stderr = w
 	}
 }
-
-// AfterParse sets the handler to run after parsing
-// and before dispatching to the command. AfterParse
-// is not called after the help or version commands.
-func AfterParse(fn Handler) Option {
-	return func(c *CLI) {
-		c.afterParse = fn
-	}
-}

@@ -24,11 +24,11 @@ type CLI struct {
 	flags          []*Flag
 	flagsMap       map[string]*Flag
 	commands       map[string]*Command
+	middleware     []func(Handler) Handler
 	version        string
 	stdin          io.Reader
 	stdout         io.Writer
 	stderr         io.Writer
-	afterParse     Handler
 	helpHandler    Handler
 	defaultHandler Handler
 }
@@ -77,6 +77,8 @@ func (c *CLI) Add(name string, handler Handler, flags []*Flag, opts ...CommandOp
 	if ok {
 		panic(fmt.Errorf("cli: duplicate command '%s'", name))
 	}
+	opt := WithMiddleware(c.middleware...)
+	opts = append([]CommandOption{opt}, opts...)
 	cmd := NewCommand(name, handler, flags, opts...)
 	c.commands[name] = cmd
 	if cmd.alias != "" {
@@ -97,7 +99,7 @@ func (c *CLI) Run(args []string) error {
 	} else if len(args) == 0 {
 		args = []string{c.name}
 	}
-	for len(args) > 0 && args[len(args)-1] == "" {
+	for len(args) > 1 && args[len(args)-1] == "" {
 		args = args[:len(args)-1]
 	}
 	err := c.run(args)
@@ -124,12 +126,6 @@ func (c *CLI) run(args []string) error {
 	args, err = c.parse(args, cmd.flags)
 	if err != nil {
 		return err
-	}
-	if c.afterParse != nil && name != "help" && name != "version" {
-		err = c.afterParse(args)
-		if err != nil {
-			return err
-		}
 	}
 	return cmd.handler(args)
 }
@@ -190,6 +186,11 @@ func (c *CLI) commandNotFound(name string) error {
 		c.Errorf("\n")
 	}
 	return ErrExitFailure
+}
+
+// Use appends middleware to the global middleware stack.
+func (c *CLI) Use(middleware ...func(Handler) Handler) {
+	c.middleware = append(c.middleware, middleware...)
 }
 
 // Printf writes to the configured stdout writer.
