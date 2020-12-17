@@ -44,15 +44,21 @@ func New(name string, usage Renderer, flags []*Flag, opts ...Option) *CLI {
 		flags:    flags,
 		flagsMap: make(map[string]*Flag),
 		commands: make(map[string]*Command),
-		stdin:    os.Stdin,
-		stdout:   os.Stdout,
-		stderr:   os.Stderr,
 	}
 	for _, option := range opts {
 		option(c)
 	}
 	if c.scope != "" && !strings.HasSuffix(c.scope, "/") {
 		c.scope += "/"
+	}
+	if c.stdin == nil {
+		c.stdin = os.Stdin
+	}
+	if c.stdout == nil {
+		c.stdout = os.Stdout
+	}
+	if c.stderr == nil {
+		c.stderr = os.Stderr
 	}
 	if c.helpHandler == nil {
 		c.helpHandler = c.defaultHelpHandler

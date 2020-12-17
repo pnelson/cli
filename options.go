@@ -34,21 +34,26 @@ func Default(handler Handler) Option {
 	}
 }
 
-// Stdin sets the stdin reader.
+// Stdin sets the stdin reader. Defaults to os.Stdin.
+// A nil reader will fallback to os.Stdin.
 func Stdin(r io.Reader) Option {
 	return func(c *CLI) {
 		c.stdin = r
 	}
 }
 
-// Stdout sets the stdout writer.
+// Stdout sets the stdout writer. Defaults to os.Stdout.
+// A nil writer will fallback to os.Stdout.
+// Use ioutil.Discard to discard output.
 func Stdout(w io.Writer) Option {
 	return func(c *CLI) {
 		c.stdout = w
 	}
 }
 
-// Stderr sets the stderr writer.
+// Stderr sets the stderr writer. Defaults to os.Stderr.
+// A nil writer will fallback to os.Stderr.
+// Use ioutil.Discard to discard output.
 func Stderr(w io.Writer) Option {
 	return func(c *CLI) {
 		c.stderr = w
