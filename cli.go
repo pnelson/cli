@@ -129,9 +129,13 @@ func (c *CLI) run(args []string) error {
 	if !ok {
 		return c.commandNotFound(name)
 	}
-	args, err = c.parse(args, cmd.flags)
-	if err != nil {
-		return err
+	if cmd.proxy {
+		args = args[1:]
+	} else {
+		args, err = c.parse(args, cmd.flags)
+		if err != nil {
+			return err
+		}
 	}
 	return cmd.handler(args)
 }

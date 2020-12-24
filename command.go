@@ -4,6 +4,7 @@ package cli
 type Command struct {
 	name       string
 	alias      string
+	proxy      bool
 	flags      []*Flag
 	handler    Handler
 	middleware []func(Handler) Handler
@@ -41,6 +42,14 @@ type CommandOption func(*Command)
 func Alias(name string) CommandOption {
 	return func(c *Command) {
 		c.alias = name
+	}
+}
+
+// Proxy instructs the dispatcher to proxy the unparsed
+// arguments to the command itself for further processing.
+func Proxy() CommandOption {
+	return func(c *Command) {
+		c.proxy = true
 	}
 }
 
