@@ -19,6 +19,7 @@ var (
 // CLI represents a command line application.
 type CLI struct {
 	name           string
+	prefix         string
 	usage          Renderer
 	scope          string
 	flags          []*Flag
@@ -47,6 +48,9 @@ func New(name string, usage Renderer, flags []*Flag, opts ...Option) *CLI {
 	}
 	for _, option := range opts {
 		option(c)
+	}
+	if c.prefix == "" {
+		c.prefix = name
 	}
 	if c.scope != "" && !strings.HasSuffix(c.scope, "/") {
 		c.scope += "/"
@@ -166,7 +170,7 @@ func (c *CLI) initFlags(flags []*Flag) error {
 			c.flagsMap[f.alias] = f
 		}
 		if f.envKey == "" {
-			key := strings.ToUpper(c.name + "_" + f.name)
+			key := strings.ToUpper(c.prefix + "_" + f.name)
 			f.envKey = mapper.Replace(key)
 		}
 	}

@@ -19,6 +19,13 @@ func Version(version string) Option {
 	}
 }
 
+// Prefix sets the environment variable prefix.
+func Prefix(prefix string) Option {
+	return func(c *CLI) {
+		c.prefix = prefix
+	}
+}
+
 // Scope sets the help topic scope for registered commands.
 // See Usage documentation for more information.
 func Scope(scope string) Option {
