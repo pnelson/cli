@@ -3,6 +3,7 @@ package cli
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -112,36 +113,44 @@ func (c *CLI) Run(args []string) error {
 	for len(args) > 1 && args[len(args)-1] == "" {
 		args = args[:len(args)-1]
 	}
-	err := c.run(args)
-	if err != nil && err != ErrExitFailure {
-		c.Errorf("%v\n", err)
+	name, err := c.run(args)
+	if err != nil {
+		if errors.Is(err, ErrUsage) {
+			uerr := c.Usage(c.stderr, name)
+			if uerr != nil {
+				return uerr
+			}
+			return ErrExitFailure
+		} else if !errors.Is(err, ErrExitFailure) {
+			c.Errorf("%v\n", err)
+		}
 	}
 	return err
 }
 
 // run parses the root command and dispatches to the given subcommand.
-func (c *CLI) run(args []string) error {
+func (c *CLI) run(args []string) (string, error) {
 	args, err := c.parse(args, c.flags)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if len(args) < 1 {
-		return c.defaultHandler(args)
+		return "", c.defaultHandler(args)
 	}
 	name := args[0]
 	cmd, ok := c.commands[name]
 	if !ok {
-		return c.commandNotFound(name)
+		return "", c.commandNotFound(name)
 	}
 	if cmd.proxy {
 		args = args[1:]
 	} else {
 		args, err = c.parse(args, cmd.flags)
 		if err != nil {
-			return err
+			return name, err
 		}
 	}
-	return cmd.handler(args)
+	return name, cmd.handler(args)
 }
 
 // parse processes args as flags until there are no longer flags.
@@ -248,11 +257,7 @@ func (c *CLI) defaultHelpHandler(args []string) error {
 
 // defaultDefaultHandler is the default handler for naked commands.
 func (c *CLI) defaultDefaultHandler(args []string) error {
-	err := c.Usage(c.stderr, "")
-	if err != nil {
-		return err
-	}
-	return ErrExitFailure
+	return ErrUsage
 }
 
 // versionHandler is the handler for the version command.

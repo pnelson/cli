@@ -27,6 +27,10 @@ func testCommandFailure(args []string) error {
 	return errCommandFailure
 }
 
+func testCommandErrUsage(args []string) error {
+	return ErrUsage
+}
+
 func TestParse(t *testing.T) {
 	tests := map[string]*testCLI{
 		"":                   &testCLI{},
@@ -228,5 +232,26 @@ func TestRunCommandError(t *testing.T) {
 	err := app.Run([]string{"appname", "test"})
 	if err != errCommandFailure {
 		t.Fatalf("Run error\nhave %v\nwant %v", err, errCommandFailure)
+	}
+}
+
+func TestRunCommandErrUsage(t *testing.T) {
+	var buf bytes.Buffer
+	c := &testCLI{}
+	flags := []*Flag{
+		NewFlag("gs1", &c.gs1),
+		NewFlag("gs2", &c.gs2),
+		NewFlag("gb1", &c.gb1, Bool()),
+	}
+	app := New("appname", testUsage, flags, Stderr(&buf))
+	app.Add("test", testCommandErrUsage, nil)
+	err := app.Run([]string{"appname", "-gb1", "-gs1", "string", "test"})
+	if err != ErrExitFailure {
+		t.Fatalf("Run error\nhave %v\nwant %v", err, ErrExitFailure)
+	}
+	have := buf.Bytes()
+	want := testUsage["test"]
+	if !reflect.DeepEqual(have, want) {
+		t.Fatalf("should return test command usage docs\nhave '%s'\nwant '%s'", have, want)
 	}
 }
