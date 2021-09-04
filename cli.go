@@ -33,6 +33,7 @@ type CLI struct {
 	stderr         io.Writer
 	helpHandler    Handler
 	defaultHandler Handler
+	resolve        func(err error)
 }
 
 // New returns a new CLI application.
@@ -70,6 +71,9 @@ func New(name string, usage Renderer, flags []*Flag, opts ...Option) *CLI {
 	}
 	if c.defaultHandler == nil {
 		c.defaultHandler = c.defaultDefaultHandler
+	}
+	if c.resolve == nil {
+		c.resolve = c.defaultResolver
 	}
 	c.Add("help", c.helpHandler, nil)
 	if c.version != "" {
@@ -122,7 +126,7 @@ func (c *CLI) Run(args []string) error {
 			}
 			return ErrExitFailure
 		} else if !errors.Is(err, ErrExitFailure) {
-			c.Errorf("%v\n", err)
+			c.resolve(err)
 		}
 	}
 	return err
@@ -258,6 +262,11 @@ func (c *CLI) defaultHelpHandler(args []string) error {
 // defaultDefaultHandler is the default handler for naked commands.
 func (c *CLI) defaultDefaultHandler(args []string) error {
 	return ErrUsage
+}
+
+// defaultResolver is the default error resolver.
+func (c *CLI) defaultResolver(err error) {
+	c.Errorf("%v\n", err)
 }
 
 // versionHandler is the handler for the version command.

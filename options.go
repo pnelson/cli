@@ -41,6 +41,13 @@ func Default(handler Handler) Option {
 	}
 }
 
+// Resolver sets the error resolver.
+func Resolver(resolver func(err error)) Option {
+	return func(c *CLI) {
+		c.resolve = resolver
+	}
+}
+
 // Stdin sets the stdin reader. Defaults to os.Stdin.
 // A nil reader will fallback to os.Stdin.
 func Stdin(r io.Reader) Option {
