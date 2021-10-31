@@ -175,7 +175,7 @@ func TestAddNilHandler(t *testing.T) {
 			t.Fatalf("nil handler should panic")
 		}
 	}()
-	app := New("appname", testUsage, nil)
+	app := New("appname", newTestUsage(t), nil)
 	app.Add("foo", nil, nil)
 }
 
@@ -186,7 +186,7 @@ func TestAddDuplicateCommand(t *testing.T) {
 			t.Fatalf("duplicate command should panic")
 		}
 	}()
-	app := New("appname", testUsage, nil)
+	app := New("appname", newTestUsage(t), nil)
 	app.Add("test", testCommand, nil)
 	app.Add("test", testCommand, nil)
 }
@@ -198,27 +198,27 @@ func TestAddDuplicateCommandAlias(t *testing.T) {
 			t.Fatalf("duplicate command alias should panic")
 		}
 	}()
-	app := New("appname", testUsage, nil)
+	app := New("appname", newTestUsage(t), nil)
 	app.Add("test", testCommand, nil)
 	app.Add("aliased", testCommand, nil, Alias("test"))
 }
 
 func TestRunDefaultCommand(t *testing.T) {
 	var buf bytes.Buffer
-	app := New("appname", testUsage, nil, Stderr(&buf))
+	app := New("appname", newTestUsage(t), nil, Stderr(&buf))
 	err := app.Run([]string{"appname"})
 	if err != ErrExitFailure {
 		t.Fatalf("default command should error")
 	}
-	have := buf.Bytes()
-	want := testUsage[""]
-	if !reflect.DeepEqual(have, want) {
+	have := buf.String()
+	want := "README.md\n"
+	if have != want {
 		t.Fatalf("should return root usage docs\nhave '%s'\nwant '%s'", have, want)
 	}
 }
 
 func TestRunHelpError(t *testing.T) {
-	app := New("appname", testUsage, nil, Stderr(ioutil.Discard))
+	app := New("appname", newTestUsage(t), nil, Stderr(ioutil.Discard))
 	app.Add("test", func([]string) error { return nil }, nil)
 	err := app.Run([]string{"appname", "help", "test", "fail"})
 	if err != ErrExitFailure {
@@ -227,7 +227,7 @@ func TestRunHelpError(t *testing.T) {
 }
 
 func TestRunCommandError(t *testing.T) {
-	app := New("appname", testUsage, nil, Stderr(ioutil.Discard))
+	app := New("appname", newTestUsage(t), nil, Stderr(ioutil.Discard))
 	app.Add("test", testCommandFailure, nil)
 	err := app.Run([]string{"appname", "test"})
 	if err != errCommandFailure {
@@ -243,15 +243,15 @@ func TestRunCommandErrUsage(t *testing.T) {
 		NewFlag("gs2", &c.gs2),
 		NewFlag("gb1", &c.gb1, Bool()),
 	}
-	app := New("appname", testUsage, flags, Stderr(&buf))
+	app := New("appname", newTestUsage(t), flags, Stderr(&buf))
 	app.Add("test", testCommandErrUsage, nil)
 	err := app.Run([]string{"appname", "-gb1", "-gs1", "string", "test"})
 	if err != ErrExitFailure {
 		t.Fatalf("Run error\nhave %v\nwant %v", err, ErrExitFailure)
 	}
-	have := buf.Bytes()
-	want := testUsage["test"]
-	if !reflect.DeepEqual(have, want) {
+	have := buf.String()
+	want := "test.md\n"
+	if have != want {
 		t.Fatalf("should return test command usage docs\nhave '%s'\nwant '%s'", have, want)
 	}
 }

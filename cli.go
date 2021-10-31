@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"sort"
 	"strings"
@@ -21,7 +22,7 @@ var (
 type CLI struct {
 	name           string
 	prefix         string
-	usage          Renderer
+	usage          fs.FS
 	scope          string
 	flags          []*Flag
 	flagsMap       map[string]*Flag
@@ -37,9 +38,9 @@ type CLI struct {
 }
 
 // New returns a new CLI application.
-func New(name string, usage Renderer, flags []*Flag, opts ...Option) *CLI {
+func New(name string, usage fs.FS, flags []*Flag, opts ...Option) *CLI {
 	if usage == nil {
-		usage = make(defaultRenderer)
+		usage = &nilUsage{}
 	}
 	c := &CLI{
 		name:     name,

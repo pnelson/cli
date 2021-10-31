@@ -14,11 +14,6 @@ var ErrExitFailure = fmt.Errorf("1")
 // ErrUsage will be rewritten as ErrExitFailure on success.
 var ErrUsage = fmt.Errorf("cli: usage")
 
-// ErrUsageNotFound represents the error that should be
-// returned by Usage implementations to signal that the
-// help topic is not found.
-var ErrUsageNotFound = fmt.Errorf("cli: usage not found")
-
 // ErrFlagSyntax represents an error for bad arguments.
 type ErrFlagSyntax string
 

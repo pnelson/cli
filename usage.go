@@ -1,40 +1,58 @@
 package cli
 
-import "io"
+import (
+	"errors"
+	"io"
+	"io/fs"
+)
 
-// Renderer represents the ability to
-// render help topics to terminal output.
-type Renderer interface {
-	Render(name string) ([]byte, error)
+// nilUsage represents the nil usage.
+type nilUsage struct{}
+
+// Open implements the io/fs.FS interface.
+func (u *nilUsage) Open(name string) (fs.File, error) {
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
-// defaultRenderer is the default Renderer implementation.
-type defaultRenderer map[string][]byte
-
-// NewRenderer returns the default Renderer implementation.
-//
-// Usage information is rendered through a Markdown to ANSI
-// compatible terminal renderer.
-//
-// The included cli-usage-gen program can generate the data
-// from a directory of Markdown files, or you can roll your
-// own per the Usage topic lookup convention.
-func NewRenderer(data map[string][]byte) Renderer {
-	return defaultRenderer(data)
+// UsageFS is a io/fs.FS implementation that
+// reads files from usage lookup keys.
+type UsageFS struct {
+	fs    fs.FS
+	ext   string
+	index string
 }
 
-// Render implements the Renderer interface.
-func (r defaultRenderer) Render(name string) ([]byte, error) {
-	b, ok := r[name]
-	if !ok {
-		return nil, ErrUsageNotFound
+// NewUsageFS returns a usage lookup fs.FS implementation.
+func NewUsageFS(fs fs.FS, opts ...UsageOption) fs.FS {
+	if fs == nil {
+		return &nilUsage{}
 	}
-	return b, nil
+	u := &UsageFS{fs: fs}
+	for _, option := range opts {
+		option(u)
+	}
+	if u.ext == "" {
+		u.ext = ".md"
+	}
+	if u.index == "" {
+		u.index = "README"
+	}
+	return u
+}
+
+// Open implements the io/fs.FS interface.
+func (u *UsageFS) Open(name string) (fs.File, error) {
+	if name == "" || name[len(name)-1] == '/' {
+		name += u.index + u.ext
+	} else {
+		name += u.ext
+	}
+	return u.fs.Open(name)
 }
 
 // Usage displays the application usage information.
 //
-// The renderer will be called with the help topic. The
+// The usage FS will be called with the help topic. The
 // help topic is prefixed with the configured scope if the
 // topic is a registered command. For example, if the scope
 // is "cli" and the "foo" command is registered, "help foo"
@@ -46,9 +64,10 @@ func (c *CLI) Usage(w io.Writer, name string) error {
 	if ok {
 		key = c.scope + name
 	}
-	b, err := c.usage.Render(key)
+	b, err := fs.ReadFile(c.usage, key)
 	if err != nil {
-		if err != ErrUsageNotFound {
+		var perr *fs.PathError
+		if !errors.As(err, &perr) {
 			return err
 		}
 		if name == "" || name == c.scope {

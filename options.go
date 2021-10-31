@@ -73,3 +73,22 @@ func Stderr(w io.Writer) Option {
 		c.stderr = w
 	}
 }
+
+// UsageOption represents a functional option for configuration.
+type UsageOption func(*UsageFS)
+
+// UsageExt sets the usage file extension. Defaults to ".md".
+func UsageExt(ext string) UsageOption {
+	return func(u *UsageFS) {
+		u.ext = ext
+	}
+}
+
+// UsageIndex sets the usage index file.
+// The configured usage extension will be appended
+// to the index name. Defaults to "README".
+func UsageIndex(index string) UsageOption {
+	return func(u *UsageFS) {
+		u.index = index
+	}
+}
