@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io/ioutil"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -155,7 +154,7 @@ func TestParseRequiresArg(t *testing.T) {
 func TestParseEnv(t *testing.T) {
 	const env = "TEST_PARSE_ENV"
 	const want = "env"
-	os.Setenv(env, want)
+	t.Setenv(env, want)
 	c := &testCLI{}
 	args := []string{}
 	flags := []*Flag{NewFlag("gs1", &c.gs1, EnvironmentKey(env))}
