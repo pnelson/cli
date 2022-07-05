@@ -3,7 +3,7 @@ package cli
 import (
 	"bytes"
 	"errors"
-	"io/ioutil"
+	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -217,7 +217,7 @@ func TestRunDefaultCommand(t *testing.T) {
 }
 
 func TestRunHelpError(t *testing.T) {
-	app := New("appname", newTestUsage(t), nil, Stderr(ioutil.Discard))
+	app := New("appname", newTestUsage(t), nil, Stderr(io.Discard))
 	app.Add("test", func([]string) error { return nil }, nil)
 	err := app.Run([]string{"appname", "help", "test", "fail"})
 	if err != ErrExitFailure {
@@ -226,7 +226,7 @@ func TestRunHelpError(t *testing.T) {
 }
 
 func TestRunCommandError(t *testing.T) {
-	app := New("appname", newTestUsage(t), nil, Stderr(ioutil.Discard))
+	app := New("appname", newTestUsage(t), nil, Stderr(io.Discard))
 	app.Add("test", testCommandFailure, nil)
 	err := app.Run([]string{"appname", "test"})
 	if err != errCommandFailure {

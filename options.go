@@ -58,7 +58,7 @@ func Stdin(r io.Reader) Option {
 
 // Stdout sets the stdout writer. Defaults to os.Stdout.
 // A nil writer will fallback to os.Stdout.
-// Use ioutil.Discard to discard output.
+// Use io.Discard to discard output.
 func Stdout(w io.Writer) Option {
 	return func(c *CLI) {
 		c.stdout = w
@@ -67,7 +67,7 @@ func Stdout(w io.Writer) Option {
 
 // Stderr sets the stderr writer. Defaults to os.Stderr.
 // A nil writer will fallback to os.Stderr.
-// Use ioutil.Discard to discard output.
+// Use io.Discard to discard output.
 func Stderr(w io.Writer) Option {
 	return func(c *CLI) {
 		c.stderr = w

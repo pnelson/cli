@@ -3,8 +3,8 @@ package cli
 import (
 	"bytes"
 	"embed"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"testing"
 )
 
@@ -49,7 +49,7 @@ func TestUsage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		var buf bytes.Buffer
-		opts := []Option{Scope(tt.scope), Stdout(&buf), Stderr(ioutil.Discard)}
+		opts := []Option{Scope(tt.scope), Stdout(&buf), Stderr(io.Discard)}
 		app := New("appname", newTestUsage(t), nil, opts...)
 		app.Add("test", testCommand, nil)
 		err := app.Run(tt.args)
@@ -64,7 +64,7 @@ func TestUsage(t *testing.T) {
 }
 
 func TestUsageNil(t *testing.T) {
-	app := New("appname", nil, nil, Stdout(ioutil.Discard), Stderr(ioutil.Discard))
+	app := New("appname", nil, nil, Stdout(io.Discard), Stderr(io.Discard))
 	err := app.Usage(nil, "test")
 	if err != ErrExitFailure {
 		t.Fatalf("usage should error")
@@ -74,7 +74,7 @@ func TestUsageNil(t *testing.T) {
 func TestUsageRoot(t *testing.T) {
 	for _, scope := range []string{"", "cli"} {
 		var buf bytes.Buffer
-		opts := []Option{Scope(scope), Stdout(ioutil.Discard), Stderr(&buf)}
+		opts := []Option{Scope(scope), Stdout(io.Discard), Stderr(&buf)}
 		app := New("appname", newTestUsage(t), nil, opts...)
 		err := app.Run([]string{"appname"})
 		if err != ErrExitFailure {
@@ -89,7 +89,7 @@ func TestUsageRoot(t *testing.T) {
 }
 
 func TestUsageNotFound(t *testing.T) {
-	app := New("appname", newTestUsage(t), nil, Stdout(ioutil.Discard), Stderr(ioutil.Discard))
+	app := New("appname", newTestUsage(t), nil, Stdout(io.Discard), Stderr(io.Discard))
 	app.Add("test", func([]string) error { return nil }, nil)
 	err := app.Run([]string{"appname", "help", "not-found"})
 	if err != ErrExitFailure {
